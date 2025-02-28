@@ -13,7 +13,8 @@ Const MAP_WIDTH = 24
 Const MAP_HEIGHT = 24
 Const PLAYER_SIZE# = 0.2 ; Taille de la hitbox du joueur
 Const STEP_CHECK# = 0.05 ; Pas pour vérifier le trajet
-Const LIGHT_RANGE# = 10.0 ; Portée maximale de la lumière (ajustable)
+Const LIGHT_RANGE# = 10.0 ; Portée maximale de la lumière
+Const MOUSE_SENSITIVITY# = 0.002 ; Sensibilité de la souris (ajustable)
 
 ; Carte simple (1 = mur, 0 = vide)
 Dim map(MAP_WIDTH,MAP_HEIGHT)
@@ -42,6 +43,10 @@ Global planeY# = 0.66
 Global moveSpeed# = 0.1
 Global rotSpeed# = 0.5
 
+; Initialisation de la souris
+HidePointer ; Cache le curseur
+MoveMouse GraphicsWidth()/2, GraphicsHeight()/2 ; Centre la souris
+
 ; Fonction pour vérifier les collisions
 Function CheckCollision#(x#, y#)
     If x < 0 Or x >= MAP_WIDTH Or y < 0 Or y >= MAP_HEIGHT Then Return True
@@ -69,32 +74,29 @@ End Function
 
 ; Fonction pour ajuster la luminosité d'une couleur
 Function AdjustLight(color, distance#)
-    ; Calcule le facteur de luminosité basé sur la distance
     brightness# = 1.0 - (distance / LIGHT_RANGE)
     If brightness < 0 Then brightness = 0
     
-    ; Extrait les composantes RGB
     r = (color Shr 16) And $FF
     g = (color Shr 8) And $FF
     b = color And $FF
     
-    ; Applique la luminosité
     r = Int(r * brightness)
     g = Int(g * brightness)
     b = Int(b * brightness)
     
-    ; Recompose la couleur
     Return (r Shl 16) Or (g Shl 8) Or b
 End Function
 
 ; Boucle principale
 While Not KeyHit(1)
     
-    ; Contrôles
-    If KeyDown(200) Then MovePlayer(dirX * moveSpeed, dirY * moveSpeed)
-    If KeyDown(208) Then MovePlayer(-dirX * moveSpeed, -dirY * moveSpeed)
+    ; Contrôles déplacement avec le clavier
+    If KeyDown(200) Then MovePlayer(dirX * moveSpeed, dirY * moveSpeed) ; Avancer
+    If KeyDown(208) Then MovePlayer(-dirX * moveSpeed, -dirY * moveSpeed) ; Reculer
     
-    If KeyDown(203) Then
+    ; Rotation avec les touches (optionnel, conservé)
+    If KeyDown(203) Then ; Tourner à gauche
         oldDirX# = dirX
         dirX = dirX * Cos(rotSpeed) - dirY * Sin(rotSpeed)
         dirY = oldDirX * Sin(rotSpeed) + dirY * Cos(rotSpeed)
@@ -103,7 +105,7 @@ While Not KeyHit(1)
         planeY = oldPlaneX * Sin(rotSpeed) + planeY * Cos(rotSpeed)
     EndIf
     
-    If KeyDown(205) Then
+    If KeyDown(205) Then ; Tourner à droite
         oldDirX# = dirX
         dirX = dirX * Cos(-rotSpeed) - dirY * Sin(-rotSpeed)
         dirY = oldDirX * Sin(-rotSpeed) + dirY * Cos(-rotSpeed)
@@ -111,6 +113,21 @@ While Not KeyHit(1)
         planeX = planeX * Cos(-rotSpeed) - planeY * Sin(-rotSpeed)
         planeY = oldPlaneX * Sin(-rotSpeed) + planeY * Cos(-rotSpeed)
     EndIf
+    
+    ; Rotation avec la souris
+    mouseMoveX = MouseXSpeed() *30; Déplacement horizontal de la souris
+
+    If mouseMoveX <> 0 Then
+        rotAngle# = -mouseMoveX * MOUSE_SENSITIVITY ; Angle de rotation basé sur la souris
+        oldDirX# = dirX
+        dirX = dirX * Cos(rotAngle) - dirY * Sin(rotAngle)
+        dirY = oldDirX * Sin(rotAngle) + dirY * Cos(rotAngle)
+        oldPlaneX# = planeX
+        planeX = planeX * Cos(rotAngle) - planeY * Sin(rotAngle)
+        planeY = oldPlaneX * Sin(rotAngle) + planeY * Cos(rotAngle)
+    EndIf
+
+    MoveMouse GraphicsWidth()/2, GraphicsHeight()/2 ; Recentre la souris
     
     ; Verrouillage des buffers
     LockBuffer BackBuffer()
@@ -205,7 +222,7 @@ While Not KeyHit(1)
             ceilTexY = Int(currentCeilY * TextureHeight(ceilTexture)) Mod TextureHeight(ceilTexture)
             
             ceilColor = ReadPixelFast(ceilTexX, ceilTexY, TextureBuffer(ceilTexture)) And $FFFFFF
-            ceilColor = AdjustLight(ceilColor, currentDist) ; Applique l'éclairage
+            ceilColor = AdjustLight(ceilColor, currentDist)
             WritePixelFast x, y, ceilColor, BackBuffer()
         Next
         
@@ -222,7 +239,7 @@ While Not KeyHit(1)
             floorTexY = Int(currentFloorY * TextureHeight(floorTexture)) Mod TextureHeight(floorTexture)
             
             floorColor = ReadPixelFast(floorTexX, floorTexY, TextureBuffer(floorTexture)) And $FFFFFF
-            floorColor = AdjustLight(floorColor, currentDist) ; Applique l'éclairage
+            floorColor = AdjustLight(floorColor, currentDist)
             WritePixelFast x, y, floorColor, BackBuffer()
         Next
         
@@ -232,9 +249,9 @@ While Not KeyHit(1)
             pixelColor = ReadPixelFast(texX, texY, TextureBuffer(wallTexture)) And $FFFFFF
             
             If side = 1 Then
-                pixelColor = (pixelColor Shr 1) And $7F7F7F ; Assombrissement des murs latéraux
+                pixelColor = (pixelColor Shr 1) And $7F7F7F
             EndIf
-            pixelColor = AdjustLight(pixelColor, perpWallDist) ; Applique l'éclairage
+            pixelColor = AdjustLight(pixelColor, perpWallDist)
             WritePixelFast x, y, pixelColor, BackBuffer()
         Next
     Next

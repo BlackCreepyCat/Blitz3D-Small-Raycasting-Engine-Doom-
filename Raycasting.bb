@@ -115,8 +115,7 @@ While Not KeyHit(1)
     EndIf
     
     ; Rotation avec la souris
-    mouseMoveX = MouseXSpeed() *30; Déplacement horizontal de la souris
-
+    mouseMoveX = MouseXSpeed() * 30 ; Déplacement horizontal de la souris
     If mouseMoveX <> 0 Then
         rotAngle# = -mouseMoveX * MOUSE_SENSITIVITY ; Angle de rotation basé sur la souris
         oldDirX# = dirX
@@ -126,7 +125,6 @@ While Not KeyHit(1)
         planeX = planeX * Cos(rotAngle) - planeY * Sin(rotAngle)
         planeY = oldPlaneX * Sin(rotAngle) + planeY * Cos(rotAngle)
     EndIf
-
     MoveMouse GraphicsWidth()/2, GraphicsHeight()/2 ; Recentre la souris
     
     ; Verrouillage des buffers
@@ -188,6 +186,12 @@ While Not KeyHit(1)
         Else
             perpWallDist# = (mapY - posY + (1 - stepY) / 2) / rayDirY
         EndIf
+        
+        ; Correction de l'effet fish-eye
+        ; On multiplie par le cosinus de l'angle entre dir et rayDir
+        cosAngle# = (dirX * rayDirX + dirY * rayDirY) / (Sqr(dirX * dirX + dirY * dirY) * Sqr(rayDirX * rayDirX + rayDirY * rayDirY))
+        If cosAngle = 0 Then cosAngle = 0.0001 ; Protection contre division par zéro
+        perpWallDist = perpWallDist * cosAngle ; Distance corrigée
         
         If perpWallDist < 0.1 Then perpWallDist = 0.1
         
